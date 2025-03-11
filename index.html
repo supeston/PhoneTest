@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест производительности</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        .stats-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 30px;
+            z-index: 1;
+            padding: 10px 30px;
+        }
+        .stats-background {
+            position: absolute;
+            width: 350px;
+            height: 60px;
+            background: #000;
+            border-radius: 30px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+        .stat {
+            color: white;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+            z-index: 1;
+            white-space: nowrap;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div class="stats-container">
+        <div class="stats-background"></div>
+        <div class="stat" id="cubeCount">Кубы: 0</div>
+        <div class="stat" id="fpsCounter">FPS: 0</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script>
+        // Настройка сцены
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Переменные
+        let cubes = [];
+        let cubeCount = 0;
+        const cubeSize = 0.1;
+        const spawnInterval = 10; // Интервал между созданиями кубов (в миллисекундах)
+        const numberOfCubes = 25; // Количество кубов, создаваемых за один раз
+
+        // FPS счетчик
+        let fps = 0;
+        let lastFrame = performance.now();
+        let frameCount = 0;
+
+        function updateFPS() {
+            const now = performance.now();
+            frameCount++;
+            if(now >= lastFrame + 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFrame = now;
+                document.getElementById('fpsCounter').innerText = `FPS: ${fps}`;
+            }
+        }
+
+        // Создание кубов
+        function createCube() {
+            for (let i = 0; i < numberOfCubes; i++) {
+                const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: Math.random() * 0xffffff,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const cube = new THREE.Mesh(geometry, material);
+                
+                cube.position.set(
+                    (Math.random() - 0.5) * 5,
+                    (Math.random() - 0.5) * 5,
+                    (Math.random() - 0.5) * 5
+                );
+                
+                cube.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.05,
+                    (Math.random() - 0.5) * 0.05,
+                    (Math.random() - 0.5) * 0.05
+                );
+                
+                scene.add(cube);
+                cubes.push(cube);
+                cubeCount++;
+            }
+            document.getElementById('cubeCount').innerText = `Кубы: ${cubeCount}`;
+        }
+
+        // Освещение
+        const light = new THREE.PointLight(0xffffff, 1, 100);
+        light.position.set(0, 0, 5);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
+
+        // Автоматическое создание кубов
+        setInterval(createCube, spawnInterval);
+
+        // Позиция камеры
+        camera.position.z = 5;
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            updateFPS();
+
+            cubes.forEach(cube => {
+                cube.position.add(cube.velocity);
+                
+                // Отскок от стен
+                const boundary = 3;
+                if(Math.abs(cube.position.x) > boundary) cube.velocity.x *= -1;
+                if(Math.abs(cube.position.y) > boundary) cube.velocity.y *= -1;
+                if(Math.abs(cube.position.z) > boundary) cube.velocity.z *= -1;
+
+                cube.rotation.x += 0.02;
+                cube.rotation.y += 0.02;
+            });
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Ресайз
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
